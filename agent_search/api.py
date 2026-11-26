@@ -59,7 +59,9 @@ def build_agent(strategy: str = DEFAULT_STRATEGY, *,
     * neither: the dependency-free ``KeywordPolicy`` (a scripted smoke policy).
 
     Call ``.index(units, key=...)`` then ``.search(question, k)``; the episode record is on
-    ``.last_trajectory_meta``. :func:`research` wraps exactly that."""
+    ``.last_trajectory_meta``. The agent's ``.search`` returns its full surfaced ranking
+    regardless of ``k``; the evaluation depends on that full set. :func:`research` wraps
+    this path and applies the ``k`` bound to its returned ranking instead."""
     from agent_search.evaluation.agent_runner import ConditionAgent
     from agent_search.strategies.conditions import CONDITIONS
 
@@ -107,16 +109,19 @@ def as_units(docs: Iterable[Any]) -> list[CodeUnit]:
 
 
 def research(question: str, docs: Iterable[Any], *, strategy: str = DEFAULT_STRATEGY,
-             corpus_key: Optional[str] = None, k: int = 10, **agent_kwargs) -> ResearchResult:
+             corpus_key: Optional[str] = None, k: Optional[int] = 10, **agent_kwargs) -> ResearchResult:
     """Run one research episode over ``docs`` and return its answer, ranking, and record.
 
     ``corpus_key`` names the corpus for its persistent indexes (Lucene BM25, the Lucene
     structured index, dense embeddings) under ``index_root``; with ``None`` the key is derived
-    from the corpus content, so a second call over the same documents reuses the indexes."""
+    from the corpus content, so a second call over the same documents reuses the indexes.
+    ``k`` bounds the returned ranking to a prefix of the ranking the agent surfaced,
+    in first-seen order. If ``k`` is larger than the surfaced set, the full set is
+    returned; ``None`` returns it without a bound."""
     units = as_units(docs)
     agent = build_agent(strategy, **agent_kwargs)
     agent.index(units, key=corpus_key)
-    ranking = list(agent.search(question, k))
+    ranking = list(agent.search(question, k))[:k]
     meta = dict(agent.last_trajectory_meta or {})
     usage = {key: meta.get(key, 0) for key in (
         "llm_calls", "n_steps", "prompt_tokens", "completion_tokens",

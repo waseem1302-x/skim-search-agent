@@ -281,6 +281,10 @@ agent.index(units, key="my_corpus")
 agent.search(question, k=10)
 ```
 
+The `k` parameter bounds the ranking returned by `research()`. The agent's own `search()`
+returns the full surfaced set regardless of `k`, as does the evaluation path for set metrics
+([scoring.py](agent_search/evaluation/scoring.py)).
+
 ## Strategies
 
 | family | `strategy=` | what the agent does |
